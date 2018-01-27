@@ -27,6 +27,7 @@ Ticker _light_transition_ticker;
 typedef struct {
     unsigned char pin;
     bool reverse;
+    bool state;
     unsigned char value;        // target or nominal value
     unsigned char shadow;       // represented value
     double current;             // transition value
@@ -381,7 +382,7 @@ void _shadow() {
     // Transitions
     unsigned char target;
     for (unsigned int i=0; i < _light_channel.size(); i++) {
-        if (_light_state) {
+        if (_light_state && _light_channel[i].state) {
             target = _light_channel[i].value;
             if ((_light_brightness < LIGHT_MAX_BRIGHTNESS) && _light_has_color && (i < 3)) {
                 target *= ((float) _light_brightness / LIGHT_MAX_BRIGHTNESS);
@@ -658,6 +659,14 @@ void lightSave() {
     _lightColorSave();
 }
 #endif
+
+void lightState(unsigned char i, bool state) {
+    _light_channel[i].state = state;
+}
+
+bool lightState(unsigned char i) {
+    return _light_channel[i].state;
+}
 
 void lightState(bool state) {
     _light_state = state;
@@ -992,7 +1001,7 @@ void lightSetup() {
 
         _my92xx = new my92xx(MY92XX_MODEL, MY92XX_CHIPS, MY92XX_DI_PIN, MY92XX_DCKI_PIN, MY92XX_COMMAND);
         for (unsigned char i=0; i<LIGHT_CHANNELS; i++) {
-            _light_channel.push_back((channel_t) {0, false, 0, 0, 0});
+            _light_channel.push_back((channel_t) {0, false, true, 0, 0, 0});
         }
 
     #endif
@@ -1000,23 +1009,23 @@ void lightSetup() {
     #if LIGHT_PROVIDER == LIGHT_PROVIDER_DIMMER
 
         #ifdef LIGHT_CH1_PIN
-            _light_channel.push_back((channel_t) {LIGHT_CH1_PIN, LIGHT_CH1_INVERSE, 0, 0, 0});
+            _light_channel.push_back((channel_t) {LIGHT_CH1_PIN, LIGHT_CH1_INVERSE, true, 0, 0, 0});
         #endif
 
         #ifdef LIGHT_CH2_PIN
-            _light_channel.push_back((channel_t) {LIGHT_CH2_PIN, LIGHT_CH2_INVERSE, 0, 0, 0});
+            _light_channel.push_back((channel_t) {LIGHT_CH2_PIN, LIGHT_CH2_INVERSE, true, 0, 0, 0});
         #endif
 
         #ifdef LIGHT_CH3_PIN
-            _light_channel.push_back((channel_t) {LIGHT_CH3_PIN, LIGHT_CH3_INVERSE, 0, 0, 0});
+            _light_channel.push_back((channel_t) {LIGHT_CH3_PIN, LIGHT_CH3_INVERSE, true, 0, 0, 0});
         #endif
 
         #ifdef LIGHT_CH4_PIN
-            _light_channel.push_back((channel_t) {LIGHT_CH4_PIN, LIGHT_CH4_INVERSE, 0, 0, 0});
+            _light_channel.push_back((channel_t) {LIGHT_CH4_PIN, LIGHT_CH4_INVERSE, true, 0, 0, 0});
         #endif
 
         #ifdef LIGHT_CH5_PIN
-            _light_channel.push_back((channel_t) {LIGHT_CH5_PIN, LIGHT_CH5_INVERSE, 0, 0, 0});
+            _light_channel.push_back((channel_t) {LIGHT_CH5_PIN, LIGHT_CH5_INVERSE, true, 0, 0, 0});
         #endif
 
         uint32 pwm_duty_init[PWM_CHANNEL_NUM_MAX];

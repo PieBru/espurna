@@ -10,12 +10,6 @@
 #include "Arduino.h"
 #include "EmonSensor.h"
 
-#if I2C_USE_BRZO
-    #include <brzo_i2c.h>
-#else
-    #include <Wire.h>
-#endif
-
 #define ADS1X15_CHANNELS                (4)
 
 #define ADS1X15_CHIP_ADS1015            (0)
@@ -213,21 +207,17 @@ class EmonADS1X15Sensor : public EmonSensor {
 
         // Type for slot # index
         unsigned char type(unsigned char index) {
-            if (index < _count) {
-                _error = SENSOR_ERROR_OK;
-                unsigned char magnitude = index / _ports;
-                unsigned char i=0;
-                #if EMON_REPORT_CURRENT
-                    if (magnitude == i++) return MAGNITUDE_CURRENT;
-                #endif
-                #if EMON_REPORT_POWER
-                    if (magnitude == i++) return MAGNITUDE_POWER_APPARENT;
-                #endif
-                #if EMON_REPORT_ENERGY
-                    if (magnitude == i) return MAGNITUDE_ENERGY;
-                #endif
-            }
-            _error = SENSOR_ERROR_OUT_OF_RANGE;
+            unsigned char magnitude = index / _ports;
+            unsigned char i=0;
+            #if EMON_REPORT_CURRENT
+                if (magnitude == i++) return MAGNITUDE_CURRENT;
+            #endif
+            #if EMON_REPORT_POWER
+                if (magnitude == i++) return MAGNITUDE_POWER_APPARENT;
+            #endif
+            #if EMON_REPORT_ENERGY
+                if (magnitude == i) return MAGNITUDE_ENERGY;
+            #endif
             return MAGNITUDE_NONE;
         }
 
@@ -246,29 +236,19 @@ class EmonADS1X15Sensor : public EmonSensor {
 
         // Current value for slot # index
         double value(unsigned char index) {
-
-            if (index < _count) {
-
-                _error = SENSOR_ERROR_OK;
-                unsigned char port = index % _ports;
-                unsigned char magnitude = index / _ports;
-
-                unsigned char i=0;
-                #if EMON_REPORT_CURRENT
-                    if (magnitude == i++) return _current[port];
-                #endif
-                #if EMON_REPORT_POWER
-                    if (magnitude == i++) return _current[port] * _voltage;
-                #endif
-                #if EMON_REPORT_ENERGY
-                    if (magnitude == i) return _energy[port];
-                #endif
-
-            }
-
-            _error = SENSOR_ERROR_OUT_OF_RANGE;
+            unsigned char port = index % _ports;
+            unsigned char magnitude = index / _ports;
+            unsigned char i=0;
+            #if EMON_REPORT_CURRENT
+                if (magnitude == i++) return _current[port];
+            #endif
+            #if EMON_REPORT_POWER
+                if (magnitude == i++) return _current[port] * _voltage;
+            #endif
+            #if EMON_REPORT_ENERGY
+                if (magnitude == i) return _energy[port];
+            #endif
             return 0;
-
         }
 
     protected:
@@ -327,21 +307,7 @@ class EmonADS1X15Sensor : public EmonSensor {
             #endif
 
             // Write config register to the ADC
-            #if I2C_USE_BRZO
-                uint8_t buffer[3];
-                buffer[0] = ADS1X15_REG_POINTER_CONFIG;
-                buffer[1] = config >> 8;
-                buffer[2] = config & 0xFF;
-                brzo_i2c_start_transaction(_address, I2C_SCL_FREQUENCY);
-                brzo_i2c_write(buffer, 3, false);
-                brzo_i2c_end_transaction();
-            #else
-                Wire.beginTransmission(_address);
-                Wire.write((uint8_t) ADS1X15_REG_POINTER_CONFIG);
-                Wire.write((uint8_t) (config >> 8));
-                Wire.write((uint8_t) (config & 0xFF));
-                Wire.endTransmission();
-            #endif
+            i2c_write_uint16(_address, ADS1X15_REG_POINTER_CONFIG, config);
 
         }
 
@@ -364,36 +330,11 @@ class EmonADS1X15Sensor : public EmonSensor {
         }
 
         unsigned int readADC(unsigned char channel) {
-
             (void) channel;
-
-            unsigned int value = 0;
-
-            #if I2C_USE_BRZO
-                uint8_t buffer[3];
-                buffer[0] = ADS1X15_REG_POINTER_CONVERT;
-                brzo_i2c_start_transaction(_address, I2C_SCL_FREQUENCY);
-                brzo_i2c_write(buffer, 1, false);
-                brzo_i2c_read(buffer, 2, false);
-                brzo_i2c_end_transaction();
-                value |= buffer[0] << 8;
-                value |= buffer[1];
-
-            #else
-                Wire.beginTransmission(_address);
-                Wire.write(ADS1X15_REG_POINTER_CONVERT);
-                Wire.endTransmission();
-                Wire.requestFrom(_address, (unsigned char) 2);
-                value |= Wire.read() << 8;
-                value |= Wire.read();
-            #endif
-
+            unsigned int value = i2c_read_uint16(_address, ADS1X15_REG_POINTER_CONVERT);
             if (_type = ADS1X15_CHIP_ADS1015) value >>= ADS1015_BIT_SHIFT;
-
             delayMicroseconds(500);
-
             return value;
-
         }
 
         unsigned char _type = ADS1X15_CHIP_ADS1115;
